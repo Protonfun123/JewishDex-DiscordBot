@@ -6,7 +6,7 @@ x-common-env-vars:
   - &postgres-user
     POSTGRES_USER=ballsdex
   - &postgres-url
-    "BALLSDEXBOT_DB_URL=postgres://ballsdex:${POSTGRES_PASSWORD}@postgres:5432/ballsdex"
+    BALLSDEXBOT_DB_URL=postgres://ballsdex:${POSTGRES_PASSWORD}@postgres:5432/ballsdex
 
 services:
 
@@ -32,7 +32,7 @@ services:
   admin-panel:
     image: ballsdex
     ports:
-      - "8000:8000"
+      - "8443:8443"
     networks:
       - internal
     environment:
