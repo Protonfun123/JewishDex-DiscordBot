@@ -6,8 +6,7 @@ x-common-env-vars:
   - &postgres-user
     POSTGRES_USER=ballsdex
   - &postgres-url
-    BALLSDEXBOT_DB_URL=postgres://ballsdex:${POSTGRES_PASSWORD}@postgres:5432/ballsdex
-
+    "BALLSDEXBOT_DB_URL=postgres://ballsdex:${POSTGRES_PASSWORD}@postgres:5432/ballsdex"
 services:
 
   bot:
