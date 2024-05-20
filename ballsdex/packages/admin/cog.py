@@ -486,7 +486,7 @@ class Admin(commands.GroupCog):
             The countryball you want to spawn. Random according to rarities if not specified.
         channel: discord.TextChannel | None
             The channel you want to spawn the countryball in. Current channel if not specified.
-        n: int
+            n: int
             The number of countryballs to spawn. If no countryball was specified, it's random
             every time.
         """
@@ -1627,3 +1627,4 @@ class Admin(commands.GroupCog):
         )
         embed.set_thumbnail(url=user.display_avatar)  # type: ignore
         await interaction.followup.send(embed=embed, ephemeral=True)
+
