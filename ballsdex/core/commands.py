@@ -2,8 +2,14 @@ import logging
 import time
 from typing import TYPE_CHECKING
 
+import discord
+
 from discord.ext import commands
+from ballsdex.core.models import Ball
+from ballsdex.packages.countryballs.countryball import CountryBall
 from tortoise import Tortoise
+from ballsdex.core.utils.transformers import BallTransform
+from tortoise.exceptions import DoesNotExist
 
 log = logging.getLogger("ballsdex.core.commands")
 
@@ -78,3 +84,37 @@ class Core(commands.Cog):
         await connection.execute_query("ANALYZE")
         t2 = time.time()
         await ctx.send(f"Analyzed database in {round((t2 - t1) * 1000)}ms.")
+
+    @commands.command()
+    @commands.is_owner()
+    async def spawnball(
+        self,
+        ctx: commands.Context,
+        channel: discord.TextChannel | None = None,
+        *,
+        ball: str | None = None,
+        amount: int | None = None,
+    ):
+        """
+        Force spawn a countryball.
+        """
+        if not ball:
+            countryball = await CountryBall.get_random()
+        else:
+            try:
+                ball_model = await Ball.get(country__iexact=ball.lower())
+            except DoesNotExist:
+                await ctx.send("No such countryball exists.")
+                return
+            countryball = CountryBall(ball_model)
+        if amount < 1:
+            amount = 1
+        elif amount > 10:
+            amount = 10
+        elif type(amount) == float:
+            amount = int(amount)
+        elif type(amount) != (int or float):
+            amount = 1
+        for _ in range(amount or 1):
+            await countryball.spawn(channel or ctx.channel)
+        await ctx.message.add_reaction("✅")
