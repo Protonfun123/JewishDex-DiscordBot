@@ -66,15 +66,32 @@ class CountryballNamePrompt(Modal, title=f"Catch this {settings.collectible_name
             )
 
             special = ""
+            specials_dict: dict = {
+                "shiny": {
+                    "1": f"✨Mazel tov! ***It's a shiny {settings.collectible_name}!***✨\n",
+                    "2": f"✨Congratulations! This {settings.collectible_name} is ***shining!***✨\n✨You caught a {settings.collectible_name}✨\n"
+                },
+                "caught_before": {
+                    "1": f"Mazel tov! This is a **new {settings.collectible_name}** that has been added to your completion!\n",
+                    "2": f"No way! This {settings.collectible_name} has not been caught before!\n"
+                },
+                "rare": {
+                    "1": f"Elohim adirim, this is a very rare {settings.collectible_name}!\n",
+                    "2": f"Mazal tov! This {settings.collectible_name} is very rare!\n"
+                }
+            }
+
             if ball.shiny:
-                special += f"✨Mazel tov! ***It's a shiny {settings.collectible_name}!*** ✨\n"
+                addition = random.choice(list(specials_dict["shiny"].values()))
+                special += addition
             if ball.specialcard and ball.specialcard.catch_phrase:
                 special += f"*{ball.specialcard.catch_phrase}*\n"
             if has_caught_before:
-                special += (
-                    f"Mazel tov! This is a **new {settings.collectible_name}** "
-                    "that has been added to your completion!"
-                )
+                addition = random.choice(list(specials_dict["caught_before"].values()))
+                special += addition
+            if ball.countryball.rarity <= 0.2 :
+                addition = random.choice(list(specials_dict["rare"].values()))
+                special += addition
             await interaction.followup.send(
                 f"{interaction.user.mention} You caught **{self.ball.name}!** "
                 f"`(#{ball.pk:0X}, {ball.attack_bonus:+}%/{ball.health_bonus:+}%)`\n\n"
@@ -91,9 +108,9 @@ class CountryballNamePrompt(Modal, title=f"Catch this {settings.collectible_name
         player, created = await Player.get_or_create(discord_id=user.id)
 
         # stat may vary by +/- 20% of base stat
-        bonus_attack = random.randint(-20, 20)
-        bonus_health = random.randint(-20, 20)
-        shiny = random.randint(1, 2048) == 1
+        bonus_attack = random.randint(-35, 40)
+        bonus_health = random.randint(-35, 40)
+        shiny = random.randint(1, 512) == 1
 
         # check if we can spawn cards with a special background
         special: "Special | None" = None

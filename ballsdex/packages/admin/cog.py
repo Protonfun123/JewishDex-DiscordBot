@@ -572,9 +572,9 @@ class Admin(commands.GroupCog):
         instance = await BallInstance.create(
             ball=ball,
             player=player,
-            shiny=(shiny if shiny is not None else random.randint(1, 2048) == 1),
-            attack_bonus=(attack_bonus if attack_bonus is not None else random.randint(-20, 20)),
-            health_bonus=(health_bonus if health_bonus is not None else random.randint(-20, 20)),
+            shiny=(shiny if shiny is not None else random.randint(1, 512) == 1),
+            attack_bonus=(attack_bonus if attack_bonus is not None else random.randint(-35, 40)),
+            health_bonus=(health_bonus if health_bonus is not None else random.randint(-35, 40)),
             special=special,
         )
         await interaction.followup.send(

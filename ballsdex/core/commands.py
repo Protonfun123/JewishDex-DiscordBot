@@ -1,11 +1,12 @@
 import logging
+import random
 import time
 from typing import TYPE_CHECKING
 
 import discord
 
 from discord.ext import commands
-from ballsdex.core.models import Ball
+from ballsdex.core.models import Ball, BallInstance, Player
 from ballsdex.packages.countryballs.countryball import CountryBall
 from tortoise import Tortoise
 from ballsdex.core.utils.transformers import BallTransform
@@ -93,7 +94,6 @@ class Core(commands.Cog):
         channel: discord.TextChannel | None = None,
         *,
         ball: str | None = None,
-        amount: int | None = None,
     ):
         """
         Force spawn a countryball.
@@ -107,14 +107,5 @@ class Core(commands.Cog):
                 await ctx.send("No such countryball exists.")
                 return
             countryball = CountryBall(ball_model)
-        if amount < 1:
-            amount = 1
-        elif amount > 10:
-            amount = 10
-        elif type(amount) == float:
-            amount = int(amount)
-        elif type(amount) != (int or float):
-            amount = 1
-        for _ in range(amount or 1):
-            await countryball.spawn(channel or ctx.channel)
+        await countryball.spawn(channel or ctx.channel)
         await ctx.message.add_reaction("✅")
