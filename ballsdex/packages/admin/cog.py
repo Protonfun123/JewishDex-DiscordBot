@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 import logging
 import random
@@ -24,6 +23,7 @@ from ballsdex.core.models import (
     Player,
     Trade,
     TradeObject,
+    balls,
 )
 from ballsdex.core.utils.buttons import ConfirmChoiceView
 from ballsdex.core.utils.enums import DONATION_POLICY_MAP, PRIVATE_POLICY_MAP
@@ -134,13 +134,8 @@ class Admin(commands.GroupCog):
         await interaction.response.send_message("Status updated.", ephemeral=True)
 
     @app_commands.command()
-    @app_commands.checks.has_any_role(*settings.root_role_ids)
-    async def rarity(
-        self,
-        interaction: discord.Interaction["BallsDexBot"],
-        chunked: bool = True,
-        include_disabled: bool = False,
-    ):
+    @app_commands.checks.has_any_role(*settings.root_role_ids, *settings.admin_role_ids)
+    async def rarity(self, interaction: discord.Interaction["BallsDexBot"], chunked: bool = True):
         """
         Generate a list of countryballs ranked by rarity.
 
@@ -148,31 +143,23 @@ class Admin(commands.GroupCog):
         ----------
         chunked: bool
             Group together countryballs with the same rarity.
-        include_disabled: bool
-            Include the countryballs that are disabled or with a rarity of 0.
         """
         text = ""
-        balls_queryset = Ball.all().order_by("rarity")
-        if not include_disabled:
-            balls_queryset = balls_queryset.filter(rarity__gt=0, enabled=True)
-        sorted_balls = await balls_queryset
+        sorted_balls = sorted(balls.values(), key=lambda x: x.rarity, reverse=True)
 
         if chunked:
             indexes: dict[float, list[Ball]] = defaultdict(list)
             for ball in sorted_balls:
                 indexes[ball.rarity].append(ball)
-            i = 1
-            for chunk in indexes.values():
+            for i, chunk in enumerate(indexes.values(), start=1):
                 for ball in chunk:
                     text += f"{i}. {ball.country}\n"
-                i += len(chunk)
         else:
             for i, ball in enumerate(sorted_balls, start=1):
                 text += f"{i}. {ball.country}\n"
 
         source = TextPageSource(text, prefix="```md\n", suffix="```")
         pages = Pages(source=source, interaction=interaction, compact=True)
-        pages.remove_item(pages.stop_pages)
         await pages.start(ephemeral=True)
 
     @app_commands.command()
@@ -291,8 +278,7 @@ class Admin(commands.GroupCog):
             informations.append("The manager is currently on cooldown.")
         if delta < 600:
             informations.append(
-                f"The manager is less than 10 minutes old, {settings.collectible_name}s "
-                "cannot spawn at the moment."
+                "The manager is less than 10 minutes old, balls cannot spawn at the moment."
             )
         if informations:
             embed.add_field(
@@ -415,70 +401,17 @@ class Admin(commands.GroupCog):
         )
         await pages.start(ephemeral=True)
 
-    async def _spawn_bomb(
-        self,
-        interaction: discord.Interaction,
-        countryball: Ball | None,
-        channel: discord.TextChannel,
-        n: int,
-    ):
-        spawned = 0
-
-        async def update_message_loop():
-            nonlocal spawned
-            for i in range(5 * 12 * 10):  # timeout progress after 10 minutes
-                await interaction.followup.edit_message(
-                    "@original",  # type: ignore
-                    content=f"Spawn bomb in progress in {channel.mention}, "
-                    f"{settings.collectible_name.title()}: {countryball or 'Random'}\n"
-                    f"{spawned}/{n} spawned ({round((spawned/n)*100)}%)",
-                )
-                await asyncio.sleep(5)
-            await interaction.followup.edit_message(
-                "@original", content="Spawn bomb seems to have timed out."  # type: ignore
-            )
-
-        await interaction.response.send_message(
-            f"Starting spawn bomb in {channel.mention}...", ephemeral=True
-        )
-        task = self.bot.loop.create_task(update_message_loop())
-        try:
-            for i in range(n):
-                if not countryball:
-                    ball = await CountryBall.get_random()
-                else:
-                    ball = CountryBall(countryball)
-                result = await ball.spawn(channel)
-                if not result:
-                    task.cancel()
-                    await interaction.followup.edit_message(
-                        "@original",  # type: ignore
-                        content=f"A {settings.collectible_name} failed to spawn, probably "
-                        "indicating a lack of permissions to send messages "
-                        f"or upload files in {channel.mention}.",
-                    )
-                    return
-                spawned += 1
-            task.cancel()
-            await interaction.followup.edit_message(
-                "@original",  # type: ignore
-                content=f"Successfully spawned {spawned} {settings.collectible_name}s "
-                f"in {channel.mention}!",
-            )
-        finally:
-            task.cancel()
-
     @balls.command()
     @app_commands.checks.has_any_role(*settings.root_role_ids)
     async def spawn(
         self,
         interaction: discord.Interaction,
-        countryball: BallTransform | None = None,
+        ball: BallTransform | None = None,
         channel: discord.TextChannel | None = None,
-        n: int = 1,
+        amount: int | None = None
     ):
         """
-        Force spawn a random or specified countryball.
+        Force spawn a random or specified ball.
 
         Parameters
         ----------
@@ -486,55 +419,44 @@ class Admin(commands.GroupCog):
             The countryball you want to spawn. Random according to rarities if not specified.
         channel: discord.TextChannel | None
             The channel you want to spawn the countryball in. Current channel if not specified.
-            n: int
-            The number of countryballs to spawn. If no countryball was specified, it's random
-            every time.
+        amount: int | None
+            The amount of balls you want to spawn. Pick a number between 1 and 100. 1 if not specified.
         """
         # the transformer triggered a response, meaning user tried an incorrect input
         if interaction.response.is_done():
             return
-
-        if n < 1:
-            await interaction.response.send_message(
-                "`n` must be superior or equal to 1.", ephemeral=True
-            )
-            return
-        if n > 100:
-            await interaction.response.send_message(
-                f"That doesn't seem reasonable to spawn {n} times, "
-                "the bot will be rate-limited. Try something lower than 100.",
-                ephemeral=True,
-            )
-            return
-
-        if n > 1:
-            await self._spawn_bomb(
-                interaction, countryball, channel or interaction.channel, n  # type: ignore
-            )
-            await log_action(
-                f"{interaction.user} spawned {settings.collectible_name}"
-                f" {countryball or 'random'} {n} times in {channel or interaction.channel}.",
-                self.bot,
-            )
-
-            return
-
         await interaction.response.defer(ephemeral=True, thinking=True)
-        if not countryball:
-            ball = await CountryBall.get_random()
+        if (not amount) or (amount < 1):
+            amount = 1
+        elif amount >= 100:
+            amount = 100
+        elif amount % 1 != 0:
+            amount = int(amount)
+        if not ball:
+            countryball = await CountryBall.get_random()
         else:
-            ball = CountryBall(countryball)
-        result = await ball.spawn(channel or interaction.channel)  # type: ignore
-
-        if result:
+            countryball = CountryBall(ball)
+        i: int = 0
+        while i < amount:
+            await countryball.spawn(channel or interaction.channel)  # type: ignore
+            if not ball:
+                countryball = await CountryBall.get_random()
+            else:
+                countryball = CountryBall(ball)
+            i += 1
+        if amount == 1:
             await interaction.followup.send(
                 f"{settings.collectible_name.title()} spawned.", ephemeral=True
             )
-            await log_action(
-                f"{interaction.user} spawned {settings.collectible_name} {ball.name} "
-                f"in {channel or interaction.channel}.",
-                self.bot,
+        else:
+            await interaction.followup.send(
+                f"{amount} balls spawned.", ephemeral=True
             )
+        await log_action(
+            f"{interaction.user} spawned {settings.collectible_name} {countryball.name} "
+            f"in {channel or interaction.channel}.",
+            self.bot,
+        )
 
     @balls.command()
     @app_commands.checks.has_any_role(*settings.root_role_ids)
@@ -559,9 +481,9 @@ class Admin(commands.GroupCog):
         shiny: bool
             Omit this to make it random.
         health_bonus: int | None
-            Omit this to make it random (-20/+20%).
+            Omit this to make it random (-35/+40%).
         attack_bonus: int | None
-            Omit this to make it random (-20/+20%).
+            Omit this to make it random (-35/+40%).
         """
         # the transformers triggered a response, meaning user tried an incorrect input
         if interaction.response.is_done():
@@ -584,8 +506,8 @@ class Admin(commands.GroupCog):
         )
         await log_action(
             f"{interaction.user} gave {settings.collectible_name} {ball.country} to {user}. "
-            f"(Special={special.name if special else None} ATK={instance.attack_bonus:+d} "
-            f"HP={instance.health_bonus:+d} shiny={instance.shiny}).",
+            f"Special={special.name if special else None} ATK={instance.attack_bonus:+d} "
+            f"HP={instance.health_bonus:+d} shiny={instance.shiny}",
             self.bot,
         )
 
@@ -644,7 +566,7 @@ class Admin(commands.GroupCog):
             await interaction.response.send_message("User is now blacklisted.", ephemeral=True)
         await log_action(
             f"{interaction.user} blacklisted {user} ({user.id})"
-            f" for the following reason: {reason}.",
+            f" for the following reason: {reason}",
             self.bot,
         )
 
@@ -697,7 +619,7 @@ class Admin(commands.GroupCog):
                 "User is now removed from blacklist.", ephemeral=True
             )
         await log_action(
-            f"{interaction.user} removed blacklist for user {user} ({user.id}).", self.bot
+            f"{interaction.user} removed blacklist for user {user} ({user.id})", self.bot
         )
 
     @blacklist.command(name="info")
@@ -772,7 +694,7 @@ class Admin(commands.GroupCog):
         Parameters
         ----------
         guild_id: str
-            The ID of the guild you want to blacklist.
+            The ID of the user you want to blacklist, if it's not in the current server.
         reason: str
         """
 
@@ -802,7 +724,7 @@ class Admin(commands.GroupCog):
             await interaction.response.send_message("Guild is now blacklisted.", ephemeral=True)
         await log_action(
             f"{interaction.user} blacklisted the guild {guild}({guild.id}) "
-            f"for the following reason: {reason}.",
+            f"for the following reason: {reason}",
             self.bot,
         )
 
@@ -819,19 +741,19 @@ class Admin(commands.GroupCog):
         Parameters
         ----------
         guild_id: str
-            The ID of the guild you want to unblacklist.
+            The ID of the user you want to unblacklist, if it's not in the current server.
         """
 
         try:
             guild = await self.bot.fetch_guild(int(guild_id))  # type: ignore
         except ValueError:
             await interaction.response.send_message(
-                "The guild ID you gave is not valid.", ephemeral=True
+                "The user ID you gave is not valid.", ephemeral=True
             )
             return
         except discord.NotFound:
             await interaction.response.send_message(
-                "The given guild ID could not be found.", ephemeral=True
+                "The given user ID could not be found.", ephemeral=True
             )
             return
 
@@ -848,7 +770,7 @@ class Admin(commands.GroupCog):
                 "Guild is now removed from blacklist.", ephemeral=True
             )
             await log_action(
-                f"{interaction.user} removed blacklist for guild {guild} ({guild.id}).", self.bot
+                f"{interaction.user} removed blacklist for guild {guild} ({guild.id})", self.bot
             )
 
     @blacklist_guild.command(name="info")
@@ -863,7 +785,7 @@ class Admin(commands.GroupCog):
         Parameters
         ----------
         guild_id: str
-            The ID of the guild you want to check.
+            The ID of the user you want to check, if it's not in the current server.
         """
 
         try:
@@ -882,9 +804,7 @@ class Admin(commands.GroupCog):
         try:
             blacklisted = await BlacklistedGuild.get(discord_id=guild.id)
         except DoesNotExist:
-            await interaction.response.send_message(
-                "That guild isn't blacklisted.", ephemeral=True
-            )
+            await interaction.response.send_message("That guild isn't blacklisted.")
         else:
             if blacklisted.date:
                 await interaction.response.send_message(
@@ -905,12 +825,12 @@ class Admin(commands.GroupCog):
     @app_commands.checks.has_any_role(*settings.root_role_ids, *settings.admin_role_ids)
     async def balls_info(self, interaction: discord.Interaction, ball_id: str):
         """
-        Show information about a countryball.
+        Show information about a ball.
 
         Parameters
         ----------
         ball_id: str
-            The ID of the countryball you want to get information about.
+            The ID of the ball you want to get information about.
         """
         try:
             pk = int(ball_id, 16)
@@ -949,18 +869,18 @@ class Admin(commands.GroupCog):
             f"**Traded:** {ball.trade_player}\n",
             ephemeral=True,
         )
-        await log_action(f"{interaction.user} got info for {ball}({ball.pk}).", self.bot)
+        await log_action(f"{interaction.user} got info for {ball} ({ball.pk})", self.bot)
 
     @balls.command(name="delete")
     @app_commands.checks.has_any_role(*settings.root_role_ids)
     async def balls_delete(self, interaction: discord.Interaction, ball_id: str):
         """
-        Delete a countryball.
+        Delete a ball.
 
         Parameters
         ----------
         ball_id: str
-            The ID of the countryball you want to delete.
+            The ID of the ball you want to get information about.
         """
         try:
             ballIdConverted = int(ball_id, 16)
@@ -980,7 +900,7 @@ class Admin(commands.GroupCog):
         await interaction.response.send_message(
             f"{settings.collectible_name.title()} {ball_id} deleted.", ephemeral=True
         )
-        await log_action(f"{interaction.user} deleted {ball}({ball.pk}).", self.bot)
+        await log_action(f"{interaction.user} deleted {ball} ({ball.pk})", self.bot)
 
     @balls.command(name="transfer")
     @app_commands.checks.has_any_role(*settings.root_role_ids)
@@ -988,14 +908,14 @@ class Admin(commands.GroupCog):
         self, interaction: discord.Interaction, ball_id: str, user: discord.User
     ):
         """
-        Transfer a countryball to another user.
+        Transfer a ball to another user.
 
         Parameters
         ----------
         ball_id: str
-            The ID of the countryball you want to transfer.
+            The ID of the ball you want to get information about.
         user: discord.User
-            The user you want to transfer the countryball to.
+            The user you want to transfer the ball to.
         """
         try:
             ballIdConverted = int(ball_id, 16)
@@ -1019,11 +939,11 @@ class Admin(commands.GroupCog):
         trade = await Trade.create(player1=original_player, player2=player)
         await TradeObject.create(trade=trade, ballinstance=ball, player=original_player)
         await interaction.response.send_message(
-            f"Transfered {ball}({ball.pk}) from {original_player} to {user}.",
+            f"Transfered {ball} ({ball.pk}) from {original_player} to {user}.",
             ephemeral=True,
         )
         await log_action(
-            f"{interaction.user} transferred {ball}({ball.pk}) from {original_player} to {user}.",
+            f"{interaction.user} transferred {ball} ({ball.pk}) from {original_player} to {user}",
             self.bot,
         )
 
@@ -1033,14 +953,14 @@ class Admin(commands.GroupCog):
         self, interaction: discord.Interaction, user: discord.User, percentage: int | None = None
     ):
         """
-        Reset a player's countryballs.
+        Reset a player's balls.
 
         Parameters
         ----------
         user: discord.User
-            The user you want to reset the countryballs of.
+            The user you want to reset the balls of.
         percentage: int | None
-            The percentage of countryballs to delete, if not all. Used for sanctions.
+            The percentage of balls to delete, if not all. Used for sanctions.
         """
         player = await Player.get(discord_id=user.id)
         if not player:
@@ -1083,9 +1003,7 @@ class Admin(commands.GroupCog):
             f"{count} {settings.collectible_name}s from {user} have been reset.", ephemeral=True
         )
         await log_action(
-            f"{interaction.user} deleted {percentage or 100}% of "
-            f"{player}'s {settings.collectible_name}s.",
-            self.bot,
+            f"{interaction.user} deleted {percentage or 100}% of {player}'s balls", self.bot
         )
 
     @balls.command(name="count")
@@ -1099,12 +1017,12 @@ class Admin(commands.GroupCog):
         special: SpecialTransform | None = None,
     ):
         """
-        Count the number of countryballs that a player has or how many exist in total.
+        Count the number of balls that a player has or how many exist in total.
 
         Parameters
         ----------
         user: discord.User
-            The user you want to count the countryballs of.
+            The user you want to count the balls of.
         ball: Ball
         shiny: bool
         special: Special
@@ -1386,7 +1304,7 @@ class Admin(commands.GroupCog):
         pages = Pages(source=source, interaction=interaction)
         await pages.start(ephemeral=True)
 
-    @history.command(name="countryball")
+    @history.command(name="ball")
     @app_commands.checks.has_any_role(*settings.root_role_ids)
     @app_commands.choices(
         sorting=[
@@ -1397,17 +1315,17 @@ class Admin(commands.GroupCog):
     async def history_ball(
         self,
         interaction: discord.Interaction["BallsDexBot"],
-        countryballid: str,
+        ballid: str,
         sorting: app_commands.Choice[str],
         days: Optional[int] = None,
     ):
         """
-        Show the history of a countryball.
+        Show the history of a ball.
 
         Parameters
         ----------
-        countryballid: str
-            The ID of the countryball you want to check the history of.
+        ballid: str
+            The ID of the ball you want to check the history of.
         sorting: str
             The sorting method you want to use.
         days: Optional[int]
@@ -1415,7 +1333,7 @@ class Admin(commands.GroupCog):
         """
 
         try:
-            pk = int(countryballid, 16)
+            pk = int(ballid, 16)
         except ValueError:
             await interaction.response.send_message(
                 f"The {settings.collectible_name} ID you gave is not valid.", ephemeral=True
@@ -1514,7 +1432,7 @@ class Admin(commands.GroupCog):
         guild_id: str | None
             The ID of the guild you want to get information about.
         days: int
-            The amount of days to look back for the amount of countryballs caught.
+            The amount of days to look back for the amount of balls caught.
         """
         await interaction.response.defer(ephemeral=True, thinking=True)
         guild = self.bot.get_guild(int(guild_id))
@@ -1565,9 +1483,7 @@ class Admin(commands.GroupCog):
             name=f"Amount of Users who caught {settings.collectible_name} ({days} days)",
             value=len(set([x.player.discord_id for x in total_server_balls])),
         )
-
-        if guild.icon:
-            embed.set_thumbnail(url=guild.icon.url)
+        embed.set_thumbnail(url=guild.icon.url)  # type: ignore
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @info.command()
@@ -1585,7 +1501,7 @@ class Admin(commands.GroupCog):
         user: discord.User | None
             The user you want to get information about.
         days: int
-            The amount of days to look back for the amount of countryballs caught.
+            The amount of days to look back for the amount of balls caught.
         """
         await interaction.response.defer(ephemeral=True, thinking=True)
         player = await Player.get_or_none(discord_id=user.id)
