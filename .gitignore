@@ -24,6 +24,8 @@ venv
 # database
 *sqlite3*
 *.rdb
+*.sql
+postgres-db
 
 # static
 static
@@ -34,3 +36,5 @@ static
 # settings
 config.yml
 docker-compose.override.yml
+
+bash.exe.stackdump

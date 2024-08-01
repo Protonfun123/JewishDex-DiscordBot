@@ -49,6 +49,23 @@ class CountryBall:
         def generate_random_name():
             source = string.ascii_uppercase + string.ascii_lowercase + string.ascii_letters
             return "".join(random.choices(source, k=15))
+        
+        def generate_spawn_message() -> str:
+            possibilities: list[str] = [
+                f"A wild {settings.collectible_name.title()} appeared! Mazal tov!",
+                f"A wild {settings.collectible_name.title()} appeared! Mazal tov!",
+                f"A wild {settings.collectible_name.title()} appeared! Mazal tov!",
+                f"A wild {settings.collectible_name.title()} appeared! Mazal tov!",
+                f"A wild {settings.collectible_name.title()} appeared! Mazal tov!",
+                f"No way! This is a wild {settings.collectible_name.title()}!",
+                f"No way! This is a wild {settings.collectible_name.title()}!",
+                f"No way! This is a wild {settings.collectible_name.title()}!",
+                f"No way! This is a wild {settings.collectible_name.title()}!",
+                f"No way! This is a wild {settings.collectible_name.title()}!",
+                f"No way! The bot owner is Jewish!"
+            ]
+            num: int = random.randint(0, len(possibilities) - 1)
+            return possibilities[num]
 
         extension = self.model.wild_card.split(".")[-1]
         file_location = "." + self.model.wild_card
@@ -57,7 +74,7 @@ class CountryBall:
             permissions = channel.permissions_for(channel.guild.me)
             if permissions.attach_files and permissions.send_messages:
                 self.message = await channel.send(
-                    f"A wild {settings.collectible_name} appeared!",
+                    generate_spawn_message(),
                     view=CatchView(self),
                     file=discord.File(file_location, filename=file_name),
                 )

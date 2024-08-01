@@ -31,7 +31,7 @@ services:
   admin-panel:
     image: ballsdex
     ports:
-      - "8443:8000"
+      - "10443:8000"
     networks:
       - internal
     environment:

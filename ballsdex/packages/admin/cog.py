@@ -276,9 +276,9 @@ class Admin(commands.GroupCog):
         informations: list[str] = []
         if cooldown.lock.locked():
             informations.append("The manager is currently on cooldown.")
-        if delta < 600:
+        if delta < 450:
             informations.append(
-                "The manager is less than 10 minutes old, balls cannot spawn at the moment."
+                "The manager is less than 7.5 minutes old, balls cannot spawn at the moment."
             )
         if informations:
             embed.add_field(

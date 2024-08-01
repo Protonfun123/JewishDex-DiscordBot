@@ -108,7 +108,7 @@ class Info(commands.Cog):
             f"**{len(self.bot.guilds):,}** servers playing\n\n"
             "This bot is based off a bot made by **El Laggron**, consider supporting him on his "
             "[Patreon](https://patreon.com/retke) :heart:\n\n"
-            f"[Citydex Server]({settings.discord_invite}) • [Invite me]({invite_link}) • "
+            f"[Official Server]({settings.discord_invite}) • [Invite me]({invite_link}) • "
             f"[Source code and issues]({settings.github_link})\n"
             f"[Terms of Service]({settings.terms_of_service}) • "
             f"[Privacy policy]({settings.privacy_policy})"

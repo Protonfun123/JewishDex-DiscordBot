@@ -12,7 +12,7 @@ from ballsdex.packages.countryballs.countryball import CountryBall
 
 log = logging.getLogger("ballsdex.packages.countryballs")
 
-SPAWN_CHANCE_RANGE = (20, 35)
+SPAWN_CHANCE_RANGE = (20, 30)
 
 CachedMessage = namedtuple("CachedMessage", ["content", "author_id"])
 
@@ -121,8 +121,8 @@ class SpawnManager:
             return
 
         # at this point, the goal is reached
-        if delta < 600:
-            # wait for at least 10 minutes before spawning
+        if delta < 450:
+            # wait for at least 7.5 minutes before spawning
             return
 
         # spawn countryball
