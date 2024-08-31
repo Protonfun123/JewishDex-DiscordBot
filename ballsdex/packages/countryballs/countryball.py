@@ -74,7 +74,7 @@ class CountryBall:
             permissions = channel.permissions_for(channel.guild.me)
             if permissions.attach_files and permissions.send_messages:
                 self.message = await channel.send(
-                    generate_spawn_message(),
+                    f"{generate_spawn_message()}\nDon't know what it is? Ask in our [official server!](<{settings.discord_invite}>)",
                     view=CatchView(self),
                     file=discord.File(file_location, filename=file_name),
                 )

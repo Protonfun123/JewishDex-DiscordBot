@@ -37,4 +37,6 @@ static
 config.yml
 docker-compose.override.yml
 
+# other stuff (shhhh)
 bash.exe.stackdump
+restore-data.bat

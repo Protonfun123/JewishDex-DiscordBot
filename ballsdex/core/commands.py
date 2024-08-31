@@ -109,7 +109,7 @@ class Core(commands.Cog):
                 await ctx.send(f"No such {settings.collictible_name.title()} exists.")
                 return
             countryball = CountryBall(ball_model)
-        countryball.message = f"{ctx.author.mention} spawned a {settings.collectible_name}!"
+        countryball.message = f"{ctx.author.mention} spawned a {settings.collectible_name.title()}!\nDon't know what it is? Ask in our [official server!](<{settings.discord_invite}>)"
 
         await countryball.spawn(channel or ctx.channel)
         await ctx.message.add_reaction("✅")

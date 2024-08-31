@@ -24,7 +24,7 @@ caught_balls = Counter(
 )
 
 
-class CountryballNamePrompt(Modal, title=f"Catch this {settings.collectible_name}!"):
+class CountryballNamePrompt(Modal, title=f"Catch this {settings.collectible_name.title()}!"):
     name = TextInput(
         label=f"Name of this {settings.collectible_name}",
         style=discord.TextStyle.short,
@@ -161,7 +161,7 @@ class CountryballNamePrompt(Modal, title=f"Catch this {settings.collectible_name
 
 class CatchButton(Button):
     def __init__(self, ball: "CountryBall"):
-        super().__init__(style=discord.ButtonStyle.primary, label=f"Catch this {settings.collectible_name}!")
+        super().__init__(style=discord.ButtonStyle.primary, label=f"Catch this {settings.collectible_name.title()}!")
         self.ball = ball
 
     async def callback(self, interaction: discord.Interaction):
