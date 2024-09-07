@@ -98,13 +98,25 @@ class Info(commands.Cog):
                 permissions=self.bot.application.install_params.permissions,
                 scopes=self.bot.application.install_params.scopes,
             )
+
+        bot_info = await self.bot.application_info()
+        if bot_info.team:
+            owner = bot_info.team.name
+        else:
+            owner = bot_info.owner
+        owner_credits = "by the team" if bot_info.team else "by"
+        dex_credits = (
+            f"This instance is owned {owner_credits} {owner}.\nAn instance of [Ballsdex]"
+            f"({settings.github_link}) by El Laggron and maintained by the Ballsdex Team "
+            f"and community of [contributors]({settings.github_link}/graphs/contributors)."
+        )
         embed.description = (
             f"{' '.join(str(x) for x in balls)}\n"
             f"{settings.about_description}\n"
             f"*Running version **[{ballsdex_version}]({settings.github_link}/releases)***\n\n"
-            f"**{balls_count:,}** {settings.collectible_name}s to collect\n"
+            f"**{balls_count:,}** {settings.plural_collectible_name} to collect\n"
             f"**{players_count:,}** players that caught "
-            f"**{balls_instances_count:,}** {settings.collectible_name}s\n"
+            f"**{balls_instances_count:,}** {settings.plural_collectible_name}\n"
             f"**{len(self.bot.guilds):,}** servers playing\n\n"
             "This bot is based off a bot made by **El Laggron**, consider supporting him on his "
             "[Patreon](https://patreon.com/retke) :heart:\n\n"
