@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 import discord
 
 from discord.ext import commands
-from ballsdex import settings
 from ballsdex.core.models import Ball, BallInstance, Player, Special
 from ballsdex.packages.countryballs.components import CountryballNamePrompt
 from ballsdex.packages.countryballs.countryball import CountryBall
@@ -147,6 +146,7 @@ class Core(commands.Cog):
         else:
             await ctx.send(f"{settings.collectible_name.title()} {ball_model.country} was given to {users[0].mention}.")
 
+    # Doesn't work :(
     @commands.command()
     @commands.is_owner()
     async def special_give(

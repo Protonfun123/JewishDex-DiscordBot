@@ -73,7 +73,7 @@ class CountryballNamePrompt(Modal, title=f"Catch this {settings.collectible_name
                 },
                 "caught_before": {
                     "1": f"Mazel tov! This is a **new {settings.collectible_name}** that has been added to your completion!\n",
-                    "2": f"No way! This {settings.collectible_name} has not been caught before!\n"
+                    "2": f"No way! You haven't caught this **{settings.collectible_name}** before!\n"
                 },
                 "rare": {
                     "1": f"Elohim adirim, this is a very rare {settings.collectible_name}!\n",
