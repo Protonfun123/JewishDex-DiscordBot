@@ -108,7 +108,7 @@ class CountryballNamePrompt(Modal, title=f"Catch this {settings.collectible_name
             await interaction.followup.edit_message(self.ball.message.id, view=self.button.view)
         else:
             await interaction.response.send_message(
-                f"{interaction.user.mention} That's the wrong Jewball! You entered: `{self.name.value.lower().strip()}`.", ephemeral=config.silent
+                f"{interaction.user.mention} That's the wrong Jewball!", ephemeral=True
             )
 
     async def catch_ball(
@@ -175,7 +175,7 @@ class CatchButton(Button):
 
     async def callback(self, interaction: discord.Interaction):
         if self.ball.catched:
-            await interaction.response.send_message(f"{interaction.user.mention} I was caught already!\nYou typed: `{self.name.value.lower().strip()}`")
+            await interaction.response.send_message(f"{interaction.user.mention} I was caught already!")
         else:
             await interaction.response.send_modal(CountryballNamePrompt(self.ball, self))
 
